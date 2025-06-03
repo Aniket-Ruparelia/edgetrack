@@ -1,0 +1,162 @@
+
+
+---
+
+# 🚨 Alert Management API
+
+This API allows authenticated users (athletes, parents, coaches, managers, and admins) to manage and view **athlete alerts**, including injury reports, risk assessments, and recovery tracking.
+
+---
+
+## 📦 Features
+
+* Role-based access control for alerts:
+
+  * 🧑‍🏫 Coaches and 🧑‍💼 Managers can **create**, **update**, and **delete** alerts for athletes in their teams.
+  * 👨‍👩‍👧 Parents can **view alerts** for their children.
+  * 🏃 Athletes can **view their own alerts**.
+  * 🛡️ Admins/org owners have unrestricted access.
+
+* Alerts include:
+
+  * Injury name, severity, recovery data, risk analysis
+  * Recovery progress tracking
+  * Trend data (workload, sleep, fatigue)
+  * Notes from physicians, coaches, or parents
+
+---
+
+## 📁 Models
+
+### Alert Schema
+
+```js
+{
+  athlete: ObjectId (ref: User, required),
+  severity: 'Low' | 'Medium' | 'High',
+  injuryName: String,
+  startDate: Date,
+  estimatedRecovery: Date,
+  recoveryProgress: Number (0–100),
+  riskScore: Number (0–100),
+  statusLabel: 'Normal Training' | 'Minor' | 'Training with Caution' | 'Moderate' | 'High Risk',
+  riskFactors: [String],
+  recommendations: [String],
+  trendAnalysis: {
+    workload: [Number],
+    sleep: [Number],
+    fatigue: [Number]
+  },
+  notes: [{
+    type: 'Physician' | 'Coach' | 'Parent',
+    author: ObjectId (ref: User),
+    content: String,
+    date: Date
+  }],
+  createdAt: Date
+}
+```
+
+---
+
+## 🔐 Auth & Roles
+
+Middleware:
+
+* `authController.protect`: All routes require authentication
+* `authController.restrictTo('coach', 'manager')`: Write actions restricted to authorized roles
+
+Roles:
+
+* **Coach/Manager**: Full edit access to alerts for their athletes
+* **Parent**: View only their children’s alerts
+* **Athlete**: View their own alerts
+* **Admin/OrgOwner**: Full access
+
+---
+
+## 📘 API Endpoints
+
+### GET `/api/alerts`
+
+Returns alerts based on the role:
+
+* **Coach/Manager**: Alerts for athletes in their teams
+* **Parent**: Alerts for their children
+* **Athlete**: Alerts for self
+* **Admin/OrgOwner**: All alerts
+
+```json
+Response: { status: "success", data: [alerts] }
+```
+
+---
+
+### GET `/api/alerts/:id`
+
+Returns a specific alert by ID with authorization checks.
+
+```json
+Response: { status: "success", data: { alert } }
+```
+
+---
+
+### POST `/api/alerts`
+
+**Coach/Manager only**
+Creates a new alert. `athlete` must be in the requester's team.
+
+```json
+Body:
+{
+  athlete: ObjectId,
+  severity: "High",
+  injuryName: "Hamstring Strain",
+  startDate: "2025-06-01",
+  estimatedRecovery: "2025-06-20",
+  ...
+}
+```
+
+---
+
+### PATCH `/api/alerts/:id`
+
+**Coach/Manager only**
+Updates an existing alert. Must match athlete in team.
+
+---
+
+### DELETE `/api/alerts/:id`
+
+**Coach/Manager only**
+Deletes an alert if the athlete belongs to a team the requester manages.
+
+---
+
+## ✅ Validation & Error Handling
+
+* 403: Unauthorized access
+* 404: Alert not found
+* 400: Invalid input or athlete mismatch
+* 201: Alert created
+* 204: Deleted successfully
+
+---
+
+## 🔧 Setup & Routing
+
+**Controller**: `controllers/alertController.js`
+**Model**: `models/Alert.js`
+**Route file**: `routes/alertRoutes.js`
+
+Mount alerts route:
+
+```js
+app.use('/api/alerts', alertRoutes);
+```
+
+---
+
+
